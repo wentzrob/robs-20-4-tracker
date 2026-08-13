@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#111827">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="20:4 Tracker">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-192.png">
+<title>Rob's 20:4 Tracker</title>
+<style>
+:root{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#172033;background:#f5f7fa}
+*{box-sizing:border-box}body{margin:0}.wrap{max-width:680px;margin:auto;padding:18px 16px 40px}
+h1{font-size:25px;margin:4px 0 2px}.sub{color:#667085;margin-bottom:18px}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.card{background:white;border:1px solid #e4e7ec;border-radius:16px;padding:14px;margin-bottom:12px}
+.big{font-size:28px;font-weight:700}.label{font-size:13px;color:#667085}.row{display:flex;justify-content:space-between;gap:10px;align-items:center}
+input,select,button{font:inherit;width:100%;padding:12px;border-radius:12px;border:1px solid #d0d5dd;background:white}
+button{background:#111827;color:white;border:0;font-weight:600}.secondary{background:#eef1f5;color:#172033}.danger{background:#fff1f1;color:#b42318}
+label{display:block;font-size:13px;color:#475467;margin:8px 0 4px}.entry{padding:10px 0;border-bottom:1px solid #eaecf0}.entry:last-child{border-bottom:0}
+.bar{height:9px;background:#e4e7ec;border-radius:99px;overflow:hidden}.fill{height:100%;background:#111827;width:0}
+.actions{display:grid;grid-template-columns:1fr 1fr;gap:10px}.small{font-size:13px;color:#667085}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Rob's 20:4 Tracker</h1>
+  <div class="sub">265 lb → 200 lb • Protein target 150–180 g</div>
+
+  <div class="grid">
+    <div class="card"><div class="label">Current weight</div><div class="big" id="currentWeight">265.0</div><div class="small">lb</div></div>
+    <div class="card"><div class="label">Lost</div><div class="big" id="lost">0.0</div><div class="small">of 65 lb</div></div>
+    <div class="card"><div class="label">Calories</div><div class="big" id="caloriesTotal">0</div><div class="small">target ~2,200</div></div>
+    <div class="card"><div class="label">Protein</div><div class="big" id="proteinTotal">0</div><div class="small">target 150–180 g</div></div>
+  </div>
+
+  <div class="card">
+    <div class="row"><strong>Today's log</strong><span class="small" id="dateLabel"></span></div>
+    <label for="weight">Morning weight (lb)</label>
+    <input id="weight" type="number" step="0.1" placeholder="265.0">
+    <label for="fast">Fasting hours</label>
+    <input id="fast" type="number" step="0.5" placeholder="20">
+    <button id="saveDay" style="margin-top:10px">Save weight / fast</button>
+  </div>
+
+  <div class="card">
+    <strong>Add food</strong>
+    <label for="food">Food or meal</label>
+    <input id="food" placeholder="Chicken breast + potato">
+    <div class="grid">
+      <div><label for="cal">Calories</label><input id="cal" type="number" min="0" placeholder="550"></div>
+      <div><label for="prot">Protein (g)</label><input id="prot" type="number" min="0" placeholder="55"></div>
+    </div>
+    <button id="addFood" style="margin-top:10px">Add food</button>
+  </div>
+
+  <div class="card">
+    <div class="row"><strong>Today's food</strong><span class="small" id="mealCount">0 items</span></div>
+    <div id="foodList"></div>
+  </div>
+
+  <div class="card">
+    <strong>Daily progress</strong>
+    <div class="small" style="margin-top:10px">Calories</div>
+    <div class="bar"><div class="fill" id="calBar"></div></div>
+    <div class="small" style="margin-top:10px">Protein</div>
+    <div class="bar"><div class="fill" id="proteinBar"></div></div>
+  </div>
+
+  <div class="card">
+    <strong>Recent weights</strong>
+    <div id="history" style="margin-top:6px"></div>
+  </div>
+
+  <div class="actions">
+    <button class="secondary" id="clearToday">Clear today's food</button>
+    <button class="danger" id="resetAll">Reset all data</button>
+  </div>
+  <p class="small" style="margin-top:18px">Data is stored locally on this device/browser. This first version does not send your entries to a server.</p>
+</div>
+
+<script>
+const KEY="robs204tracker_v1";
+const todayKey=()=>new Date().toISOString().slice(0,10);
+let db=JSON.parse(localStorage.getItem(KEY)||'{"days":{}}');
+function day(){let k=todayKey();if(!db.days[k])db.days[k]={foods:[],weight:null,fast:null};return db.days[k]}
+function save(){localStorage.setItem(KEY,JSON.stringify(db))}
+function esc(s){return String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
+function render(){
+ const d=day(), foods=d.foods||[];
+ let cal=foods.reduce((a,x)=>a+Number(x.cal||0),0), prot=foods.reduce((a,x)=>a+Number(x.prot||0),0);
+ let weights=Object.entries(db.days).filter(([k,v])=>v.weight).sort((a,b)=>a[0].localeCompare(b[0]));
+ let current=weights.length?Number(weights.at(-1)[1].weight):265;
+ document.getElementById("dateLabel").textContent=todayKey();
+ document.getElementById("currentWeight").textContent=current.toFixed(1);
+ document.getElementById("lost").textContent=Math.max(0,265-current).toFixed(1);
+ document.getElementById("caloriesTotal").textContent=Math.round(cal).toLocaleString();
+ document.getElementById("proteinTotal").textContent=Math.round(prot);
+ document.getElementById("weight").value=d.weight??"";
+ document.getElementById("fast").value=d.fast??"";
+ document.getElementById("mealCount").textContent=foods.length+" item"+(foods.length===1?"":"s");
+ document.getElementById("calBar").style.width=Math.min(100,cal/2200*100)+"%";
+ document.getElementById("proteinBar").style.width=Math.min(100,prot/160*100)+"%";
+ document.getElementById("foodList").innerHTML=foods.length?foods.map((x,i)=>`<div class="entry row"><div><strong>${esc(x.name)}</strong><div class="small">${x.cal} cal • ${x.prot} g protein</div></div><button class="secondary" style="width:auto;padding:7px 10px" onclick="removeFood(${i})">Remove</button></div>`).join(""):'<div class="small" style="padding-top:8px">Nothing logged yet.</div>';
+ document.getElementById("history").innerHTML=weights.slice(-7).reverse().map(([k,v])=>`<div class="entry row"><span>${k}</span><strong>${Number(v.weight).toFixed(1)} lb</strong></div>`).join("")||'<div class="small">No weigh-ins yet.</div>';
+}
+window.removeFood=i=>{day().foods.splice(i,1);save();render()}
+document.getElementById("saveDay").onclick=()=>{let w=Number(document.getElementById("weight").value);day().weight=w||null;day().fast=Number(document.getElementById("fast").value)||null;save();render()}
+document.getElementById("addFood").onclick=()=>{let name=document.getElementById("food").value.trim(),cal=Number(document.getElementById("cal").value),prot=Number(document.getElementById("prot").value);if(!name||!cal)return;day().foods.push({name,cal,prot});save();document.getElementById("food").value="";document.getElementById("cal").value="";document.getElementById("prot").value="";render()}
+document.getElementById("clearToday").onclick=()=>{day().foods=[];save();render()}
+document.getElementById("resetAll").onclick=()=>{if(confirm("Delete all tracker data on this device?")){db={days:{}};save();render()}}
+if("serviceWorker" in navigator)navigator.serviceWorker.register("sw.js").catch(()=>{});
+render();
+</script>
+</body>
+</html>
